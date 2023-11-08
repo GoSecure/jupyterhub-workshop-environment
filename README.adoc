@@ -8,6 +8,7 @@ Features:
 * Read-only shared files to all users (in users' homes)
 * Users have their own copies of notebook, created on first login from template directory
 * Each user is in its own container which can be customized
+* Optional: Expose the users' containers on the host's network (enables connect-back or XXE workflows)
 * Server deployed and managed by Terraform
 
 Forked from https://github.com/jupyterhub/jupyterhub-deploy-docker in 2017
