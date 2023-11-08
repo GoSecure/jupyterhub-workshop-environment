@@ -2,14 +2,19 @@
 
 Opionated JupyterHub deployment for workshops relying on GitHub for Authentication
 
+This is a drastic departure of our previous environment available here: https://github.com/GoSecure/jupyterhub-workshop-environment-legacy
+
 Features:
 
 * Supports JupyterLab and Jupyter Notebook (Python and Terminals)
 * Read-only shared files to all users (in users' homes)
 * Users have their own copies of notebook, created on first login from template directory
 * Each user is in its own container which can be customized
-* Optional: Expose the users' containers on the host's network (enables connect-back or XXE workflows)
 * Server deployed and managed by Terraform
+
+Missing Features:
+
+* Optional: Expose the users' containers on the host's network (enables connect-back or XXE workflows)
 
 Forked from https://github.com/jupyterhub/jupyterhub-deploy-docker in 2017
 
