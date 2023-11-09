@@ -1,7 +1,0 @@
-= README
-
-This is an example `labs-source/` folder. Once the server is setup, copy this
-folder into `/srv/workshop/` keeping the `labs-source` name.
-
-Afterwards, on each creation of a Jupyter Notebook instance, the content of
-this folder will be put in the users' `~/labs/` folder.
