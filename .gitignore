@@ -1,6 +1,4 @@
 # Secrets
-/jupyterhub/secrets/
-/jupyterhub/userlist
 /terraform.tfvars
 /tmp_sshkey
 
@@ -8,3 +6,6 @@
 /.terraform/
 /.terraform.lock.hcl
 /terraform.tfstate*
+
+# Workshop files
+/workshop-data/
