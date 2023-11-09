@@ -40,7 +40,7 @@ resource "null_resource" "provision" {
       "NEEDRESTART_MODE=a apt-get install -y python3 python3-dev git curl",
       <<-EOF
       curl -L https://tljh.jupyter.org/bootstrap.py \
-       | sudo python3 - --admin admin:${random_password.admin_password.result} \
+       | sudo python3 - --admin admin:${random_string.admin_password.result} \
        --plugin git+https://github.com/kafonek/tljh-shared-directory \
        --user-requirements-txt-url ${var.workshop_requirements_url}
       EOF
