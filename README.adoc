@@ -131,6 +131,10 @@ Spawn and provision the droplet. It might take a while to setup and provision, s
     terraform plan
     terraform apply
 
+NOTE: During the apply, you should hurry up and update the DNS of `workshop_domain` to point to the newly deployed droplet public IP.
+      Failure to do so will end-up in repeated Let's Encrypt certificate creation failures and will result in a block of one hour before you can attempt to create the certificate again.
+      If it happens. Shutdown jupyterhub, make sure DNS has propagated and start jupyterhub again after one hour.
+
 === Server-Side Configuration
 
 To connect to the server via SSH, run:
