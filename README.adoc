@@ -45,7 +45,8 @@ Populate `terraform.tfvars` with the following content:
 
   github_client_id  = "<github_client_id>"
   github_client_secret = "<github_client_secret>"
-  github_oauth_callback = "https://<myhost.mydomain>/hub/oauth_callback"
+  # GitHub Oauth Callback will be set to https://<workshop_domain>/hub/oauth_callback by default
+  #github_oauth_callback = "https://<myhost.mydomain>/hub/oauth_callback"
 
 By default our setup is open to anyone to create an account like for an open
 workshop with no pre-registrations (different options available below).
