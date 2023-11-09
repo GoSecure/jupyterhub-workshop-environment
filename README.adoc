@@ -1,6 +1,6 @@
 = README
 
-Opionated JupyterHub deployment for workshops relying on GitHub for Authentication
+Opionated JupyterHub deployment for workshops relying on GitHub for Authentication and Digital Ocean as the infrastructure provider.
 
 This is a drastic departure of our previous environment available here: https://github.com/GoSecure/jupyterhub-workshop-environment-legacy
 
@@ -8,15 +8,14 @@ Features:
 
 * Supports JupyterLab and Jupyter Notebook (Python and Terminals)
 * Read-only shared files to all users (in users' homes)
-* Users have their own copies of notebook, created on first login from template directory
-* Each user is in its own container which can be customized
+* Writeable and shared scratch directory available to all users (in users' homes)
+* Users have their own copies of notebook, created on first login from a template directory
 * Server deployed and managed by Terraform
+* Out of the box LetsEncrypt HTTPS
+* Very close to upstream https://tljh.jupyter.org/[The Littlest JupyterHub (TLJH)] should make upgrades seamless
 
-Missing Features:
+Originally forked from https://github.com/jupyterhub/jupyterhub-deploy-docker[jupyterhub-deploy-docker] in 2017 but little left if anything today.
 
-* Optional: Expose the users' containers on the host's network (enables connect-back or XXE workflows)
-
-Forked from https://github.com/jupyterhub/jupyterhub-deploy-docker in 2017
 
 == Setup Instructions
 
@@ -37,51 +36,66 @@ of time:
 * Workshop Description
 * Workshop Icon if desired.
 
-Follow the instructions under the *Authenticator setup* section of
-`README.upstream.md` and create `secrets/oauth.env` with the following
-content:
-
-  GITHUB_CLIENT_ID=<github_client_id>
-  GITHUB_CLIENT_SECRET=<github_client_secret>
-  OAUTH_CALLBACK_URL=https://<myhost.mydomain>/hub/oauth_callback
-
 *NOTE*: Applications for workshops should be created under your organization at
 https://github.com/organizations/<orgname>/settings/applications/new
 
 Ask organisation admin to create the application with the required information.
 
+Populate `terraform.tfvars` with the following content:
+
+  github_client_id  = "<github_client_id>"
+  github_client_secret = "<github_client_secret>"
+  github_oauth_callback = "https://<myhost.mydomain>/hub/oauth_callback"
+
 By default our setup is open to anyone to create an account like for an open
-workshop with no pre-registrations (different options available below). Setup
-the users with admin privileges in advance by writing the github usernames to
-the `secrets/admins` file (one per line).
+workshop with no pre-registrations (different options available below).
 
 ==== Setup Administrator Accounts
 
-Add one or more accounts in `secrets/admins`. These accounts will be
-granted full access to the JupyterHub.
+The first administrator account is configured in the `terraform.tfvars` file with `jupyterhub_admin`.
+It must be a GitHub username. Once authenticated this user will be an administrator.
+Other admin accounts are configured in the `/opt/tljh/config/config.yaml` file.
+The administration GUI (`/hub/admin`) also allows you to elevate accounts via "Edit".
+These accounts can use `sudo` without a password.
 
+==== Workshop Files
 
-==== Workshop Files: Overlay Filesystem
+There are three ways to expose files to the workshop attendees.
 
-There are two ways to expose files to the workshop attendees.
+Files exposed to attendees all rely to using the Linux `/etc/skel/` home directory template. Remember: once the user is created, things in `skel` will not be copied again. You must destroy a user for it to be recreated (see instructions below under "Operational Procedures").
 
 .Read-only shared with all participants
 
-All users will have access to a directory in their own homes (`/home/jovyan/`)
-called `workshop/` that will be mapped to the servers' `/srv/workshop/` via a
-docker volume.
+* Locally: `workshop-data/`
+* Deployed to: `/srv/workshop/`
+* Available to participants as: `workshop-readonly/` in their home directory
 
-Changes made in `/srv/workshop/*` will be reflected instantly for all participants.
+All users will have access to a directory in their own homes (`/home/jupyter-<github_username>/`) called `workshop-readonly/` that will be mapped to the servers' `/srv/workshop/`.
 
+Changes made in `/srv/workshop/*` will be reflected instantly to all participants.
+
+This is accomplished via a symlink in `/etc/skel/`.
 
 .Files for participants (writable and executable)
 
-On container creation, a directory called `labs/` will be created and
-populated from the servers' `/srv/workshop/labs-source/` content.
+* Locally: `workshop-data/assignments/`
+* Deployed to: `/srv/workshop/assignments` and `/etc/skel/your-personal-lab/`
+* Available to participants as: `your-personal-lab/` in their home directory
 
-This will happen only once per user. If you need to re-populate it, you need
-to delete the user' files in his volume. These are visible under:
-`/var/lib/docker/volumes/jupyterhub-user-<username>/_data/`
+On container creation, a directory called `your-personal-lab/` will be created and
+populated from the servers' `/etc/skel/your-personal-lab/` content.
+
+.Scratch for participants (shared and writable)
+
+* Locally: None
+* On the server: `/srv/scratch/`
+* Available to participants as: `scratch/` in their home directory
+
+A `scratch/` directory is available in users' home which is world-writable.
+Creator ownership is retained, you can't alter someone else's files but you can read them.
+
+Enabled by the https://github.com/kafonek/tljh-shared-directory[tljh-shared-directory] plugin.
+
 
 === Deploying the Server
 
@@ -96,17 +110,23 @@ Configure your Digital Ocean credentials and other settings in `terraform.tfvars
     tag_owner = "<username>"
     tag_event = "<event-name>"
     do_token = "<your DO token>"
-    # default is small 1 CPU and 2GB RAM
+    # default is 1 CPU 2 GB, you can find droplet sizes here: https://slugs.do-api.dev/
     #instance_size = "c-4"
+    # default region is Toronto (tor1)
+    instance_region = "nyc3"
+    jupyterhub_admin = "<github-username>"
+    # A URL to a Python requirements.txt file for dependencies to be installed on the system
+    workshop_requirements_url = "<URL>"
 
-Spawn and provision the droplet. It might take a while to setup and
-provision, so be patient. The repository should be synchronized to
-`/srv`
+    # GitHub Authentication Parameters
+    github_client_id  = "<github_client_id>"
+    github_client_secret = "<github_client_secret>"
+
+Spawn and provision the droplet. It might take a while to setup and provision, so be patient.
 
     terraform validate
     terraform plan
     terraform apply
-
 
 === Server-Side Configuration
 
@@ -114,147 +134,51 @@ To connect to the server via SSH, run:
 
     ./bin/ssh-connect.sh
 
+=== More Customization
 
-==== Build Notebook Image
+At this point you have a 100% standard TLJH installation.
+You can rely on their documentation to further customize the installation:
 
-If you are using a custom notebook, you need to build it first and rebuild
-the jupyterhub-user image. The base image that jupyterhub-user will
-use is configured with the `DOCKER_NOTEBOOK_IMAGE` key in `.env`.
-
-  cd examples/custom-notebook-server/
-  # <change what you need or use another example>
-  docker build -t workshop-notebook .
-  cd ../../
-  make notebook_image
-
-==== Configure TLS and HTTPS with Certbot
-
-* Ensure that your domain name resolves to the created droplet public address.
-* Create certificates using certbot (make sure docker-compose is not running)
-
-    certbot certonly --standalone -d <domain-name>
-    cp /etc/letsencrypt/live/<domain-name>/fullchain.pem secrets/jupyterhub.crt
-    cp /etc/letsencrypt/live/<domain-name>/privkey.pem secrets/jupyterhub.key
-
-
-==== Launch the Jupyter Server
-
-After everything is configured, you can spawn the jupyter server with the following commands:
-
-      cd /srv/jupyterhub/
-      make
-      docker-compose up
-
-Whenever changing the secrets or environment variables, rebuilding and
-relaunching the images is required:
-
-    docker-compose down
-    make
-    docker-compose up
-
-
-== Components
-
-Once authenticated the user has access to a JupyterLab environment by default.
-A Jupyter Notebook environment is available by changing the URL from `/user/<username>/lab` to `/user/<username>/tree`.
-
-The administrative interface is available at `/hub/admin` for users who are allowed to use it.
-
-
-== Optional: Only allow specific users
-
-If you create a `secrets/users` file with a list of allowed GitHub usernames,
-only these usernames will be able to sign-up to the server.
-
-When you change that list, you need to restart the JupyterHub container.
-Easiest way to achieve this is to kill the docker-compose environment, 
-run `make` and restart docker-compose.
-
-    <ctrl-d>
-    make
-    docker-compose up
-
-User lists can optionally have an `admin` tag to identify admin users. Ex:
-
-    linus admin
-    obilodeau
-    masarah admin
-
-
-== Optional: Stop Open Registrations
-
-// TODO
-
-
-== Optional: User Instances Exposed to the Internet
-
-Uncomment the following line in the `.env` file and make sure to rebuild the
-`hub` container.
-
-    DOCKER_NOTEBOOK_EXPOSE_NETWORK=true
-
-Please double check that `secrets/context.env` has the correct `HOST_IP` in it.
-The Makefile is a little bit brittle in that regard.
+* https://tljh.jupyter.org/en/latest/howto/index.html[How-To Guides]
+* https://tljh.jupyter.org/en/latest/topic/customizing-installer.html#installing-python-packages-in-the-user-environment[Installing more packages in the environment]
+* https://tljh.jupyter.org/en/latest/topic/index.html[Topic Guides]
+* https://tljh.jupyter.org/en/latest/troubleshooting/index.html[Troubleshooting]
 
 
 == Operational Procedures
 
-=== Add a user to a running instance
-
-Add GitHub username to `secrets/users`. Restart the jupyterhub with:
-
-    docker-compose up -d --build hub
-
 === Upgrading JupyterHub
 
-Read https://github.com/jupyterhub/jupyterhub/blob/main/docs/source/changelog.md[the changelog] and the
-https://github.com/jupyterhub/jupyterhub/blob/main/docs/source/admin/upgrading.rst[upgrade notes].
+Re-running the TLJH installer should upgrade JupyterHub
 
-Tell the users to save and shutdown their notebooks and that they could lose data if they don't.
-Shutdown all notebooks from the JupyterHub admin interface.
-Shutdown all containers with `docker-compose down`.
+=== Deleting a user
 
-Make sure to backup the volumes (`/var/lib/docker/volumes/jupyter*`) and your docker-compose directory just in case.
+This is useful when testing the initial setup of a user's home directory.
 
-Change the JUPYTERHUB_VERSION in `.env` and adjust your `jupyterhub_config.py` if needed.
+* In the `/hub/admin` GUI: Edit User -> Delete
+* In a root shell: `userdel -r jupyter-<username>`
 
-Rebuild your user container (usually one in `examples/`), follow `README.md` instructions.
-Make sure to do a `make notebook_image` to create the jupyterhub wrapper container for it.
+=== Reveal Solutions
 
-Rebuild the JupyterHub container: `docker-compose build hub`
+From an admin notebook:
 
-If a database schema change is required (changelog should tell), run: `docker-compose run hub jupyterhub upgrade-db`
+    !sudo chmod go+rx /srv/workshop/solutions/
+    !sudo chmod go+r /srv/workshop/solutions/*
 
-Then start the environment as usual with: `docker-compose up`
+From an admin shell:
+
+    sudo chmod go+rx /srv/workshop/solutions/
+    sudo chmod go+r /srv/workshop/solutions/*
 
 
 == Debugging
 
 === Logging
 
-In `jupyter_config.py`, setting `log_level` to `'DEBUG'` will give more information in the docker-compose logs:
+Using `systemctl status` on the jupyterhub or traefik services:
 
-    c.JupyterHub.log_level = 'DEBUG'
+    systemctl status jupyterhub
 
+Checking the logs with `journalctl`:
 
-=== Troubleshooting User Container Failure
-
-If you get strange errors when the user container tries to start, make sure that it can start properly.
-Errors can be as obscure as: "traitlets.traitlets.TraitError: The 'ip' trait of a Server instance must be a unicode string, but a value of None <class 'NoneType'> was specified".
-Disable the container removal and inspect the failed container logs with the following steps:
-
-* Disable container removal by making sure that the DockerSpawner is configured properly.
-  In `jupyter_config.py` ensure that this configuration is present (and not overridden after):
-
-    c.DockerSpawner.remove = False
-
-* Load the new config:
-
-    docker-compose down
-    make
-    docker-compose up
-
-* Upon container creation failure now you can see the containers being left dangling:
-
-    docker ps
-    docker logs jupyter-obilodeau
+    journalctl -f -u traefik

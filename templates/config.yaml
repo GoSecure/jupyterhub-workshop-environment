@@ -1,0 +1,21 @@
+users:
+  admin:
+  - ${jupyterhub_admin}
+auth:
+  GitHubOAuthenticator:
+    client_id: ${github_client_id}
+    client_secret: ${github_client_secret}
+    oauth_callback_url: https://${workshop_domain}/hub/oauth_callback
+  type: oauthenticator.github.GitHubOAuthenticator
+  OAuthenticator:
+    allow_all: true
+https:
+  enabled: true
+  letsencrypt:
+    email: ${workshop_contact}
+    domains:
+      - ${workshop_domain}
+services:
+  cull:
+    # keep inactive user environments for 2 hours before destroying (better UX)
+    timeout: 7200
