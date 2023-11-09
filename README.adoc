@@ -65,7 +65,7 @@ There are three ways to expose files to the workshop attendees.
 
 Files exposed to attendees all rely to using the Linux `/etc/skel/` home directory template. Remember: once the user is created, things in `skel` will not be copied again. You must destroy a user for it to be recreated (see instructions below under "Operational Procedures").
 
-.Read-only shared with all participants
+===== Read-only shared with all participants
 
 * Locally: `workshop-data/`
 * Deployed to: `/srv/workshop/`
@@ -77,7 +77,7 @@ Changes made in `/srv/workshop/*` will be reflected instantly to all participant
 
 This is accomplished via a symlink in `/etc/skel/`.
 
-.Files for participants (writable and executable)
+===== Files for participants (writable and executable)
 
 * Locally: `workshop-data/assignments/`
 * Deployed to: `/srv/workshop/assignments` and `/etc/skel/your-personal-lab/`
@@ -86,7 +86,7 @@ This is accomplished via a symlink in `/etc/skel/`.
 On container creation, a directory called `your-personal-lab/` will be created and
 populated from the servers' `/etc/skel/your-personal-lab/` content.
 
-.Scratch for participants (shared and writable)
+===== Scratch for participants (shared and writable)
 
 * Locally: None
 * On the server: `/srv/scratch/`
@@ -106,22 +106,24 @@ Ensure that you have a recent version of Terraform installed and get it ready:
 
 Configure your Digital Ocean credentials and other settings in `terraform.tfvars`:
 
-    # the following values are used as tags in digital ocean so only lowercase, dash and underscore allowed
-    workshop_name = "<workshop-name>"
-    tag_owner = "<username>"
-    tag_event = "<event-name>"
-    do_token = "<your DO token>"
-    # default is 1 CPU 2 GB, you can find droplet sizes here: https://slugs.do-api.dev/
-    #instance_size = "c-4"
-    # default region is Toronto (tor1)
-    instance_region = "nyc3"
-    jupyterhub_admin = "<github-username>"
-    # A URL to a Python requirements.txt file for dependencies to be installed on the system
-    workshop_requirements_url = "<URL>"
+----
+# the following values are used as tags in digital ocean so only lowercase, dash and underscore allowed
+workshop_name = "<workshop-name>"
+tag_owner = "<username>"
+tag_event = "<event-name>"
+do_token = "<your DO token>"
+# default is 1 CPU 2 GB, you can find droplet sizes here: https://slugs.do-api.dev/
+#instance_size = "c-4"
+# default region is Toronto (tor1)
+instance_region = "nyc3"
+jupyterhub_admin = "<github-username>"
+# A URL to a Python requirements.txt file for dependencies to be installed on the system
+workshop_requirements_url = "<URL>"
 
-    # GitHub Authentication Parameters
-    github_client_id  = "<github_client_id>"
-    github_client_secret = "<github_client_secret>"
+# GitHub Authentication Parameters
+github_client_id  = "<github_client_id>"
+github_client_secret = "<github_client_secret>"
+----
 
 Spawn and provision the droplet. It might take a while to setup and provision, so be patient.
 
